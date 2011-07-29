@@ -1,0 +1,5 @@
+A very simple tool for converting text-syntax weka trees into c++ if-else statements.
+
+Supports string/double variable and return types currently. Tested on REP/J48 trees.
+
+Next up rule based learner support.
