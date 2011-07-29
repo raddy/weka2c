@@ -3,3 +3,7 @@ A very simple tool for converting text-syntax weka trees into c++ if-else statem
 Supports string/double variable and return types currently. Tested on REP/J48 trees.
 
 Next up rule based learner support.
+
+Usage: python weka2c.py <filename>
+
+Generates "C-version" as filename+".cpp"
