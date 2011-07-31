@@ -17,6 +17,31 @@ conditionals=""
 returntype=""
 indent_style="  "
 base = indent_style #yeah, some people might have this be different...
+
+def checkType(num):
+    stringtype = re.search(r'[a-zA-Z]',num)
+    if stringtype:
+        return "string"
+    else:
+        signloc = num.find("-")
+        if (signloc>0):
+            return "string"
+        else:
+            return "double"
+
+def buildLine(line):
+    varname=((re.search(r'[-_\w]+',line)).group())
+    oper=((re.search(r'[<=>]+',line)).group())
+    postop = (line[(line.find(oper)):len(line)])
+    num=((re.search(r'[\d.\w-]+',postop)).group())
+    vartypes[varname] = checkType(num)
+    if vartypes[varname] == "string":
+        num="\""+num+"\""
+    if oper=="=":
+        oper="=="
+    full="if ("+varname+" "+oper+" "+num+"){\n"
+    return full;
+
 for line in logfile:
     depth=(line.count("|"))
     i=depth
@@ -35,26 +60,14 @@ for line in logfile:
     		ndeps[dep] = lastdepths[dep]
     lastdepths = ndeps
     if (depth in lastdepths):
-    	full=base+indent+"}\n"+base+indent+"else{\n"
+    	full=base+indent+"}\n"+base+indent+"else"
     	conditionals+=(prefix+full)
+        #redundant but might be necessary for other types later...
+        conditionals+=buildLine(line)
     	lastdepths[depth] = rownum
     else:
-    	varname=((re.search(r'\w+',line)).group())
-    	oper=((re.search(r'[<=>]+',line)).group())
-    	postop = (line[(line.find(oper)):len(line)])
-    	num=((re.search(r'[\d.\w-]+',postop)).group())
-    	stringtype = re.search(r'[a-zA-Z]',num)
-    	if stringtype:
-    		vartypes[varname] = "string"
-    	else:
-    		signloc = num.find("-")
-    		if (signloc>0):
-    			vartypes[varname] = "string"
-    		else:
-    			vartypes[varname] = "double"
-    	full="if ("+varname+" "+oper+" "+num+"){\n"
     	lastdepths[depth]=rownum
-    	conditionals+=base+(indent+prefix+full)
+    	conditionals+=base+indent+buildLine(line)
     	braces+=1
     res=""
     if (line.count(":")>0):

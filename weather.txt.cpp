@@ -4,22 +4,22 @@ using namespace std;
 
 string classify(string outlook, string windy, double humidity){
 
-  if (outlook = sunny){
+  if (outlook == "sunny"){
     if (humidity <= 75){
       return "yes";
     }
-    else{
+    elseif (humidity > 75){
       return "no";
     }
   }
-  else{
+  elseif (outlook == "overcast"){
     return "yes";
   }
-  else{
-    if (windy = TRUE){
+  elseif (outlook == "rainy"){
+    if (windy == "TRUE"){
       return "no";
     }
-    else{
+    elseif (windy == "FALSE"){
       return "yes";
     }
   }
