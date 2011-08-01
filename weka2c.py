@@ -1,12 +1,18 @@
 import re,sys,os
 from collections import defaultdict
 
+file_type = "tree"
+
 if len(sys.argv)<2:
-	sys.exit('Usage: %s weka-text-tree-source' % sys.argv[0])
-	
+	sys.exit('Usage: %s weka-text-source [tree|rule]' % sys.argv[0])
 if not os.path.exists(sys.argv[1]):
     sys.exit('ERROR: File %s was not found!(nub)' % sys.argv[1])
- 
+if len(sys.argv)<3:
+     print("ASSUMING TREE SYNTAX")
+else:
+    file_type = sys.argv[2]
+
+
 logfile = open(sys.argv[1], "r").readlines()   
 rownum=1
 lastdepths = defaultdict() #GLOBAL VAR USED AS SUCH
@@ -33,6 +39,23 @@ def functionCall(funcname,vartypes):
             fc+=name+"){\n\n"
         i+=1
     return fc
+
+def jripResult(remainder):
+    global returntype
+    res=""
+    res = ((re.search(r'[\d\w.-]+',remainder)).group())
+    ret = re.search(r'[a-zA-Z]',res)
+    if ret or returntype=="string":
+        returntype="string"
+        return "\""+res+"\"" 
+    else:
+        signloc = res.rfind("-")
+        if (signloc>0):
+            returntype="string"
+        else:
+            if (returntype!="string"):
+                returntype="double"
+        return res
 
 def getResult(line):
     global returntype
@@ -89,6 +112,11 @@ def checkType(num):
         else:
             return "double"
 
+def fixOper(oper):
+    if oper=="=":
+        oper="=="
+    return oper
+
 def buildLine(line):
     global vartypes
     varname=((re.search(r'[-_\w]+',line)).group())
@@ -106,29 +134,62 @@ def buildLine(line):
 def indentSize(depth):
     return indent_style*depth
 
+def jripLine(line):
+    global vartypes
+    conditions = line[0:line.find("=>")]
+    result = ((re.search(r'[\d\w.-]+',line[line.rfind("=")+1:len(line)])).group())
+    terms = re.split(r'and',conditions)
+    if terms[0] == " ": #end of ifs 
+        return base+"else\n"+base+indent_style+"return "+jripResult(result)+";\n"
+    else:
+        statement=base+"if("
+    i=0
+    for t in terms:
+        varname=((re.search(r'[-_\w]+',t)).group())
+        oper=((re.search(r'[<=>]+',t)).group())
+        postop = (t[(t.find(oper)):len(t)])
+        num=((re.search(r'[\d.\w-]+',postop)).group())
+        vartypes[varname] = checkType(num)
+        if vartypes[varname] == "string":
+            num="\""+num+"\""
+        oper = fixOper(oper)
+        statement+="("+varname+oper+num+")"
+        if i<(len(terms)-1):
+            statement+=" && "
+        else:
+            statement+=")\n"+base+indent_style+"return "+jripResult(result)+";\n"
+        i+=1
+    return statement
 
 ## "MAIN"
-
-for line in logfile:
-    depth=(line.count("|"))
-    indent=indentSize(depth)
-    prefix=""
-    conditionals+=closingBraces()
-    if (depth in lastdepths):
-    	full=base+indent+"}\n"+base+indent+"else"
-    	conditionals+=(prefix+full)
-    else:
-    	braces+=1
-        conditionals+=base+indent
-    res=""
-    lastdepths[depth]=rownum
-    conditionals+=buildLine(line)
-    result = getResult(line)
-    if result:
-        conditionals+=result
-    prevdepth=depth
-    rownum+=1
-conditionals+=eofBraces(braces,prevdepth)
+if file_type == "tree":
+    for line in logfile:
+        depth=(line.count("|"))
+        indent=indentSize(depth)
+        prefix=""
+        conditionals+=closingBraces()
+        if depth in lastdepths:
+            full=base+indent+"}\n"+base+indent+"else"
+            conditionals+=(prefix+full)
+        else:
+            braces+=1
+            conditionals+=base+indent
+        res=""
+        lastdepths[depth]=rownum
+        conditionals+=buildLine(line)
+        result = getResult(line)
+        if result:
+            conditionals+=result
+        prevdepth=depth
+        rownum+=1
+    conditionals+=eofBraces(braces,prevdepth)
+elif file_type =="jrip":
+    for line in logfile:
+        conditionals+=jripLine(line)
+elif file_type == "part":
+    print("sorta rules")
+else:
+    sys.exit('Usage: %s weka-text-source [tree|rule]' % sys.argv[0])
 #file header bs
 output=header()
 output+=returntype+ functionCall("classify",vartypes)
